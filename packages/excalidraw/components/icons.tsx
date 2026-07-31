@@ -1982,6 +1982,21 @@ export const mermaidLogoIcon = createIcon(
   />,
 );
 
+export const latexIcon = createIcon(
+  <g
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18.5 4.5h-11l4.5 7.5l-4.5 7.5h11" />
+    <path d="M15.5 8.5h4" />
+    <path d="M17.5 6.5v4" />
+  </g>,
+  tablerIconProps,
+);
+
 // tabler-icons: refresh
 export const RetryIcon = createIcon(
   <g strokeWidth="1.5">

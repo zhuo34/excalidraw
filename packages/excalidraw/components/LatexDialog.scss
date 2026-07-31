@@ -1,0 +1,48 @@
+.excalidraw {
+  .LatexDialog {
+    .LatexDialog__label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .LatexDialog__input {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 8rem;
+      resize: vertical;
+      padding: 0.75rem;
+      border: 1px solid var(--default-border-color);
+      border-radius: var(--border-radius-lg);
+      color: var(--text-primary-color);
+      background: var(--input-bg-color);
+      font-family: monospace;
+      font-size: 1rem;
+      line-height: 1.5;
+
+      &:focus {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 1px;
+      }
+    }
+
+    .LatexDialog__help {
+      margin: 0.5rem 0 0;
+      color: var(--color-gray-60);
+      font-size: 0.875rem;
+    }
+
+    .LatexDialog__error {
+      margin: 0.75rem 0 0;
+      color: var(--color-danger);
+      font-size: 0.875rem;
+    }
+
+    .LatexDialog__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+  }
+}

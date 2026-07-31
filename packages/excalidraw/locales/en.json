@@ -335,7 +335,17 @@
     "hand": "Hand (panning tool)",
     "extraTools": "More tools",
     "mermaidToExcalidraw": "Mermaid to Excalidraw",
+    "latex": "LaTeX formula",
     "convertElementType": "Toggle shape type"
+  },
+  "latex": {
+    "title": "Insert LaTeX formula",
+    "inputLabel": "LaTeX",
+    "placeholder": "\\frac{a+b}{c} = \\sqrt{x^2+y^2}",
+    "description": "Enter the formula without surrounding $$ delimiters. Press Ctrl or Cmd + Enter to insert.",
+    "insert": "Insert formula",
+    "emptyError": "Enter a LaTeX formula.",
+    "renderError": "The formula could not be rendered."
   },
   "element": {
     "rectangle": "Rectangle",
