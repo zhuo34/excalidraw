@@ -198,11 +198,25 @@ const MATRIX_DELIMITERS = {
   cases: ["{", ""],
 } as const;
 
+const RELATION_SYMBOLS = new Set([
+  "=",
+  "<",
+  ">",
+  "≤",
+  "≥",
+  "≠",
+  "≈",
+  "∼",
+  "≃",
+  "≡",
+]);
+
 export type LatexAstNode =
   | { type: "row"; children: LatexAstNode[] }
   | { type: "text"; value: string }
   | { type: "function"; value: string }
   | { type: "operator"; value: string; limits: boolean }
+  | { type: "relation"; value: string }
   | { type: "space"; em: number }
   | {
       type: "fraction";
@@ -217,6 +231,11 @@ export type LatexAstNode =
       limits: boolean;
     }
   | { type: "sqrt"; index: LatexAstNode | null; body: LatexAstNode }
+  | {
+      type: "underbrace";
+      body: LatexAstNode;
+      annotation: LatexAstNode | null;
+    }
   | { type: "overline" | "underline"; body: LatexAstNode }
   | {
       type: "accent";
@@ -356,6 +375,11 @@ class Parser {
       return { type: "space", em: 0.5 };
     }
 
+    if (RELATION_SYMBOLS.has(character)) {
+      this.position += 1;
+      return { type: "relation", value: character };
+    }
+
     if (character === "^" || character === "_") {
       this.warnings.push(
         `Ignored script marker without a base at offset ${this.position}`,
@@ -375,7 +399,10 @@ class Parser {
       return text(GREEK[command]);
     }
     if (Object.hasOwn(SYMBOLS, command)) {
-      return text(SYMBOLS[command]);
+      const value = SYMBOLS[command];
+      return RELATION_SYMBOLS.has(value)
+        ? { type: "relation", value }
+        : text(value);
     }
     if (Object.hasOwn(OPERATORS, command)) {
       return { type: "operator", ...OPERATORS[command] };
@@ -404,6 +431,17 @@ class Parser {
         index: this.peekOptionalArgument(),
         body: this.parseRequiredArgument(command),
       };
+    }
+
+    if (command === "underbrace") {
+      const body = this.parseRequiredArgument(command);
+      this.skipMathWhitespace();
+      let annotation: LatexAstNode | null = null;
+      if (this.peek() === "_") {
+        this.position += 1;
+        annotation = this.parseScriptArgument();
+      }
+      return { type: "underbrace", body, annotation };
     }
 
     if (command === "text" || command === "operatorname") {

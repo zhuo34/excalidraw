@@ -97,6 +97,21 @@ const translatePrimitives = (
   dy: number,
 ) => primitives.map((primitive) => translatePrimitive(primitive, dx, dy));
 
+const polylineToPrimitives = (
+  points: readonly (readonly [number, number])[],
+  role: string,
+  strokeWidth: number,
+): LatexLinePrimitive[] =>
+  points.slice(1).map((point, index) => ({
+    kind: "line",
+    role,
+    x1: points[index][0],
+    y1: points[index][1],
+    x2: point[0],
+    y2: point[1],
+    strokeWidth,
+  }));
+
 const mergeAdjacentTextPrimitives = (
   primitives: LatexPrimitive[],
 ): LatexPrimitive[] => {
@@ -370,6 +385,69 @@ const layoutScripts = (
   );
 };
 
+const layoutUnderbrace = (
+  node: Extract<LatexAstNode, { type: "underbrace" }>,
+  style: LayoutStyle,
+  layoutNode: LayoutNode,
+): LatexLayoutBox => {
+  const body = layoutNode(node.body, style);
+  const annotation = node.annotation
+    ? layoutNode(node.annotation, scaledStyle(style, style.scriptScale))
+    : null;
+  const braceWidth = Math.max(body.width, style.fontSize * 0.8);
+  const width = Math.max(braceWidth, annotation?.width ?? 0);
+  const bodyX = (width - body.width) / 2;
+  const braceX = (width - braceWidth) / 2;
+  const braceGap = Math.max(1, style.fontSize * 0.05);
+  const braceDepth = Math.max(5, style.fontSize * 0.24);
+  const braceY = body.height + braceGap;
+  const annotationGap = Math.max(2, style.fontSize * 0.08);
+  const annotationY = braceY + braceDepth + annotationGap;
+  const strokeWidth = Math.max(0.9, style.fontSize * 0.04);
+  const bracePoints = [
+    [0, 0],
+    [braceWidth * 0.04, braceDepth * 0.15],
+    [braceWidth * 0.08, braceDepth * 0.42],
+    [braceWidth * 0.14, braceDepth * 0.55],
+    [braceWidth * 0.42, braceDepth * 0.55],
+    [braceWidth * 0.47, braceDepth * 0.7],
+    [braceWidth * 0.5, braceDepth],
+    [braceWidth * 0.53, braceDepth * 0.7],
+    [braceWidth * 0.58, braceDepth * 0.55],
+    [braceWidth * 0.86, braceDepth * 0.55],
+    [braceWidth * 0.92, braceDepth * 0.42],
+    [braceWidth * 0.96, braceDepth * 0.15],
+    [braceWidth, 0],
+  ] as const;
+  const annotationPrimitives =
+    annotation?.primitives.map((primitive) =>
+      primitive.kind === "text"
+        ? { ...primitive, role: "underbrace-label" }
+        : primitive,
+    ) ?? [];
+
+  return createBox(
+    width,
+    annotation ? annotationY + annotation.height : braceY + braceDepth,
+    body.baseline,
+    [
+      ...translatePrimitives(body.primitives, bodyX, 0),
+      ...translatePrimitives(
+        polylineToPrimitives(bracePoints, "underbrace", strokeWidth),
+        braceX,
+        braceY,
+      ),
+      ...(annotation
+        ? translatePrimitives(
+            annotationPrimitives,
+            (width - annotation.width) / 2,
+            annotationY,
+          )
+        : []),
+    ],
+  );
+};
+
 const layoutSquareRoot = (
   node: Extract<LatexAstNode, { type: "sqrt" }>,
   style: LayoutStyle,
@@ -547,6 +625,107 @@ const layoutFencedBox = (
   ]);
 };
 
+const layoutMatrixDelimiter = (
+  delimiter: string,
+  height: number,
+  style: LayoutStyle,
+): LatexLayoutBox => {
+  if (!delimiter) {
+    return createBox(0, height, height / 2);
+  }
+
+  const strokeWidth = Math.max(0.75, style.fontSize * 0.034);
+  const width = Math.max(
+    delimiter === "|" ? 3 : 5,
+    style.fontSize * (delimiter === "‖" ? 0.24 : 0.32),
+  );
+  const role = "matrix-delimiter";
+
+  if (delimiter === "|" || delimiter === "‖") {
+    const xs = delimiter === "‖" ? [width * 0.3, width * 0.7] : [width * 0.5];
+    return createBox(
+      width,
+      height,
+      height / 2,
+      xs.map((x) => ({
+        kind: "line",
+        role,
+        x1: x,
+        y1: 0,
+        x2: x,
+        y2: height,
+        strokeWidth,
+      })),
+    );
+  }
+
+  let points: readonly (readonly [number, number])[];
+  if (delimiter === "(" || delimiter === ")") {
+    points = [
+      [width, 0],
+      [width * 0.45, height * 0.08],
+      [width * 0.1, height * 0.27],
+      [0, height * 0.5],
+      [width * 0.1, height * 0.73],
+      [width * 0.45, height * 0.92],
+      [width, height],
+    ];
+  } else if (delimiter === "[" || delimiter === "]") {
+    points = [
+      [width, 0],
+      [0, 0],
+      [0, height],
+      [width, height],
+    ];
+  } else {
+    points = [
+      [width, 0],
+      [width * 0.5, height * 0.06],
+      [width * 0.35, height * 0.2],
+      [width * 0.35, height * 0.38],
+      [0, height * 0.5],
+      [width * 0.35, height * 0.62],
+      [width * 0.35, height * 0.8],
+      [width * 0.5, height * 0.94],
+      [width, height],
+    ];
+  }
+
+  if (delimiter === ")" || delimiter === "]" || delimiter === "}") {
+    points = points.map(([x, y]) => [width - x, y] as const);
+  }
+
+  return createBox(
+    width,
+    height,
+    height / 2,
+    polylineToPrimitives(points, role, strokeWidth),
+  );
+};
+
+const layoutMatrixFencedBox = (
+  body: LatexLayoutBox,
+  left: string,
+  right: string,
+  style: LayoutStyle,
+): LatexLayoutBox => {
+  const verticalPadding =
+    left || right ? Math.max(2, style.fontSize * 0.08) : 0;
+  const height = body.height + verticalPadding * 2;
+  const leftBox = layoutMatrixDelimiter(left, height, style);
+  const rightBox = layoutMatrixDelimiter(right, height, style);
+  const gap = Math.max(2, style.fontSize * 0.1);
+  const bodyX = leftBox.width + (left ? gap : 0);
+  const bodyY = verticalPadding;
+  const rightX = bodyX + body.width + (right ? gap : 0);
+
+  return createBox(rightX + rightBox.width, height, bodyY + body.baseline, [
+    ...leftBox.primitives,
+    ...translatePrimitives(body.primitives, bodyX, bodyY),
+    ...translatePrimitives(rightBox.primitives, rightX, 0),
+  ]);
+};
+
 const layoutMatrix = (
   node: Extract<LatexAstNode, { type: "matrix" }>,
   style: LayoutStyle,
@@ -595,7 +774,7 @@ const layoutMatrix = (
     y += rowBaselines[rowIndex] + rowDescents[rowIndex] + rowGap;
   });
 
-  return layoutFencedBox(
+  return layoutMatrixFencedBox(
     createBox(width, height, height / 2 + style.fontSize * 0.18, primitives),
     node.left,
     node.right,
@@ -670,6 +849,16 @@ export const layoutLatexAst = (
           scaledStyle(currentStyle, node.value.length === 1 ? 1.3 : 1),
           "operator",
         );
+      case "relation": {
+        const relation = layoutTextValue(node.value, currentStyle, "relation");
+        const sideSpacing = Math.max(3, currentStyle.fontSize * 0.2);
+        return createBox(
+          relation.width + sideSpacing * 2,
+          relation.height,
+          relation.baseline,
+          translatePrimitives(relation.primitives, sideSpacing, 0),
+        );
+      }
       case "space":
         return createBox(currentStyle.fontSize * node.em, 0, 0);
       case "fraction":
@@ -678,6 +867,8 @@ export const layoutLatexAst = (
         return layoutScripts(node, currentStyle, layoutNode);
       case "sqrt":
         return layoutSquareRoot(node, currentStyle, layoutNode);
+      case "underbrace":
+        return layoutUnderbrace(node, currentStyle, layoutNode);
       case "overline":
         return layoutRuleDecoration(node, currentStyle, layoutNode, "top");
       case "underline":

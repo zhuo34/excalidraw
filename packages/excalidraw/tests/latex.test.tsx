@@ -25,7 +25,7 @@ describe("LaTeX toolbar input", () => {
 
     const input = await screen.findByLabelText("LaTeX");
     fireEvent.change(input, {
-      target: { value: "\\frac{x_1}{\\sqrt{y}}" },
+      target: { value: "\\underbrace{a+b+c}_{说明文字}=d" },
     });
     fireEvent.click(
       screen.getByRole("button", {
@@ -41,6 +41,11 @@ describe("LaTeX toolbar input", () => {
       window.h.elements.flatMap((element) => element.groupIds),
     );
     expect(groupIds.size).toBe(1);
+    expect(
+      window.h.elements.some(
+        (element) => element.customData?.latexRole === "underbrace",
+      ),
+    ).toBe(true);
     expect(
       window.h.elements
         .filter((element) => element.type === "text")
