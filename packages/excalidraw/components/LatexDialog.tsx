@@ -47,32 +47,60 @@ export const LatexDialog = () => {
       const storedFontSize = targetElement?.customData?.latexFontSize;
       const storedRoughness = targetElement?.customData?.latexRoughness;
       const storedStrokeStyle = targetElement?.customData?.latexStrokeStyle;
-      const fallbackFontSize =
-        formulaElements.reduce(
+      const referenceFontSize =
+        typeof storedFontSize === "number"
+          ? storedFontSize
+          : app.state.currentItemFontSize;
+      const strokeColor =
+        targetElement?.strokeColor ?? app.state.currentItemStrokeColor;
+      const opacity = targetElement?.opacity ?? app.state.currentItemOpacity;
+      const roughness =
+        typeof storedRoughness === "number"
+          ? storedRoughness
+          : app.state.currentItemRoughness;
+      const strokeStyle =
+        storedStrokeStyle === "solid" ||
+        storedStrokeStyle === "dashed" ||
+        storedStrokeStyle === "dotted"
+          ? storedStrokeStyle
+          : app.state.currentItemStrokeStyle;
+      const currentMaxTextSize = formulaElements.reduce(
+        (fontSize, element) =>
+          element.type === "text"
+            ? Math.max(fontSize, element.fontSize)
+            : fontSize,
+        0,
+      );
+      let effectiveFontSize = referenceFontSize;
+
+      if (dialogState?.source && currentMaxTextSize > 0) {
+        const referenceFormula = renderLatexToElements(dialogState.source, {
+          fontSize: referenceFontSize,
+          strokeColor,
+          opacity,
+          roughness,
+          strokeStyle,
+        });
+        const referenceMaxTextSize = referenceFormula.elements.reduce(
           (fontSize, element) =>
             element.type === "text"
               ? Math.max(fontSize, element.fontSize)
               : fontSize,
           0,
-        ) || app.state.currentItemFontSize;
+        );
+
+        if (referenceMaxTextSize > 0) {
+          effectiveFontSize =
+            referenceFontSize * (currentMaxTextSize / referenceMaxTextSize);
+        }
+      }
+
       const { elements } = renderLatexToElements(source, {
-        fontSize:
-          typeof storedFontSize === "number"
-            ? storedFontSize
-            : fallbackFontSize,
-        strokeColor:
-          targetElement?.strokeColor ?? app.state.currentItemStrokeColor,
-        opacity: targetElement?.opacity ?? app.state.currentItemOpacity,
-        roughness:
-          typeof storedRoughness === "number"
-            ? storedRoughness
-            : app.state.currentItemRoughness,
-        strokeStyle:
-          storedStrokeStyle === "solid" ||
-          storedStrokeStyle === "dashed" ||
-          storedStrokeStyle === "dotted"
-            ? storedStrokeStyle
-            : app.state.currentItemStrokeStyle,
+        fontSize: effectiveFontSize,
+        strokeColor,
+        opacity,
+        roughness,
+        strokeStyle,
       });
       if (
         dialogState?.elementId &&

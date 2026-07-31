@@ -74,6 +74,7 @@ const createTextElement = (
       latexRenderer: "excalidraw-text-v1",
       latexRole: primitive.role,
       latexFontSize: context.fontSize,
+      latexPrimitiveFontSize: primitive.fontSize,
       latexRoughness: context.roughness,
       latexStrokeStyle: context.strokeStyle,
     },

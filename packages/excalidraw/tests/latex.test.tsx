@@ -86,7 +86,12 @@ describe("LaTeX toolbar input", () => {
       expect(window.h.elements.length).toBeGreaterThan(1);
     });
 
-    const originalElements = [...window.h.elements];
+    const insertedElements = [...window.h.elements];
+    UI.resize(insertedElements, "se", [100, 100]);
+
+    const originalElements = window.h.elements.filter(
+      (element) => !element.isDeleted,
+    );
     const originalElementIds = new Set(
       originalElements.map((element) => element.id),
     );
@@ -95,6 +100,13 @@ describe("LaTeX toolbar input", () => {
     const formulaText = originalElements.find(
       (element) => element.type === "text",
     )!;
+    const resizedMaxFontSize = Math.max(
+      ...originalElements
+        .filter((element) => element.type === "text")
+        .map((element) => element.fontSize),
+    );
+
+    expect(resizedMaxFontSize).toBeGreaterThan(28);
 
     mouse.doubleClickOn(formulaText);
 
@@ -118,6 +130,11 @@ describe("LaTeX toolbar input", () => {
     });
 
     const [newX1, newY1, newX2, newY2] = getCommonBounds(window.h.elements);
+    const updatedMaxFontSize = Math.max(
+      ...window.h.elements.flatMap((element) =>
+        !element.isDeleted && element.type === "text" ? [element.fontSize] : [],
+      ),
+    );
     expect(
       window.h.elements.every(
         (element) =>
@@ -127,6 +144,7 @@ describe("LaTeX toolbar input", () => {
     ).toBe(true);
     expect((newX1 + newX2) / 2).toBeCloseTo((oldX1 + oldX2) / 2);
     expect((newY1 + newY2) / 2).toBeCloseTo((oldY1 + oldY2) / 2);
+    expect(updatedMaxFontSize).toBeCloseTo(resizedMaxFontSize);
     expect(GlobalTestState.renderResult.queryByLabelText("LaTeX")).toBeNull();
 
     Keyboard.undo();
