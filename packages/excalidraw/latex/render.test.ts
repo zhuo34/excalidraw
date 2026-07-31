@@ -34,6 +34,36 @@ describe("renderLatexToElements", () => {
     ).toBe(true);
   });
 
+  it("balances the horizontal spacing inside a square root", () => {
+    const { elements } = renderLatexToElements("\\sqrt{x}");
+    const radicand = elements.find(
+      (element) => element.type === "text" && element.text === "x",
+    )!;
+    const radical = elements.filter(
+      (element) => element.customData?.latexRole === "radical",
+    );
+    const overbar = elements.find(
+      (element) => element.customData?.latexRole === "radical-overbar",
+    );
+    const radicalRight = Math.max(
+      ...radical.flatMap((element) =>
+        element.type === "line"
+          ? element.points.map(([x]) => element.x + x)
+          : [],
+      ),
+    );
+    const overbarRight =
+      overbar?.type === "line"
+        ? Math.max(...overbar.points.map(([x]) => overbar.x + x))
+        : 0;
+    const leftGap = radicand.x - radicalRight;
+    const rightGap = overbarRight - (radicand.x + radicand.width);
+
+    expect(leftGap).toBeGreaterThanOrEqual(1);
+    expect(leftGap).toBeLessThanOrEqual(3);
+    expect(rightGap).toBeGreaterThanOrEqual(2);
+  });
+
   it("uses Excalifont and smaller text elements for scripts", () => {
     const { elements } = renderLatexToElements("x_{ij}^{2}");
     const textElements = elements.filter((element) => element.type === "text");
