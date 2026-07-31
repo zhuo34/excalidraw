@@ -43,6 +43,19 @@ export type RenderLatexResult = {
   height: number;
 };
 
+const unwrapLatexDelimiters = (source: string) => {
+  const delimiterLength =
+    source.length >= 4 && source.startsWith("$$") && source.endsWith("$$")
+      ? 2
+      : source.length >= 2 && source.startsWith("$") && source.endsWith("$")
+      ? 1
+      : 0;
+
+  return delimiterLength
+    ? source.slice(delimiterLength, -delimiterLength).trim()
+    : source;
+};
+
 const createTextElement = (
   primitive: Extract<LatexPrimitive, { kind: "text" }>,
   context: {
@@ -146,13 +159,14 @@ export const renderLatexToElements = (
   options: RenderLatexOptions = {},
 ): RenderLatexResult => {
   const source = latex.trim();
-  if (!source) {
+  const formulaSource = unwrapLatexDelimiters(source);
+  if (!formulaSource) {
     throw new Error("The LaTeX formula cannot be empty.");
   }
 
   const fontFamily = options.fontFamily ?? FONT_FAMILY.Excalifont;
   const lineHeight = getLineHeight(fontFamily);
-  const { ast, warnings } = parseLatex(source);
+  const { ast, warnings } = parseLatex(formulaSource);
   const layout = layoutLatexAst(ast, {
     fontSize: options.fontSize ?? 28,
     fontFamily,

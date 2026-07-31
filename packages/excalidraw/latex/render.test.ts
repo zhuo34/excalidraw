@@ -34,6 +34,22 @@ describe("renderLatexToElements", () => {
     ).toBe(true);
   });
 
+  it.each(["$x^2+y^2$", "$$x^2+y^2$$"])(
+    "accepts formulas wrapped in dollar delimiters: %s",
+    (source) => {
+      const { elements } = renderLatexToElements(source);
+      const renderedText = elements
+        .filter((element) => element.type === "text")
+        .map((element) => element.text)
+        .join("");
+
+      expect(renderedText).not.toContain("$");
+      expect(
+        elements.every((element) => element.customData?.latex === source),
+      ).toBe(true);
+    },
+  );
+
   it("balances the horizontal spacing inside a square root", () => {
     const { elements } = renderLatexToElements("\\sqrt{x}");
     const radicand = elements.find(
@@ -163,6 +179,7 @@ describe("renderLatexToElements", () => {
 
   it("rejects empty or malformed formulas", () => {
     expect(() => renderLatexToElements("   ")).toThrow();
+    expect(() => renderLatexToElements("$$  $$")).toThrow();
     expect(() => renderLatexToElements("\\frac{a}")).toThrow();
   });
 });

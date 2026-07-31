@@ -20,6 +20,7 @@ const mouse = new Pointer("mouse");
 describe("LaTeX toolbar input", () => {
   it("opens the dialog and inserts one grouped formula", async () => {
     const { container } = await render(<Excalidraw />);
+    const source = "$\\underbrace{a+b+c}_{说明文字}=d$";
 
     fireEvent.click(
       container.querySelector(".App-toolbar__extra-tools-trigger")!,
@@ -30,7 +31,7 @@ describe("LaTeX toolbar input", () => {
 
     const input = await screen.findByLabelText("LaTeX");
     fireEvent.change(input, {
-      target: { value: "\\underbrace{a+b+c}_{说明文字}=d" },
+      target: { value: source },
     });
     fireEvent.click(
       screen.getByRole("button", {
@@ -55,6 +56,13 @@ describe("LaTeX toolbar input", () => {
       window.h.elements
         .filter((element) => element.type === "text")
         .every((element) => element.fontFamily === FONT_FAMILY.Excalifont),
+    ).toBe(true);
+    expect(
+      window.h.elements.every(
+        (element) =>
+          element.customData?.latex === source &&
+          (element.type !== "text" || !element.text.includes("$")),
+      ),
     ).toBe(true);
     expect(window.h.state.openDialog).toBeNull();
     expect(GlobalTestState.renderResult.queryByLabelText("LaTeX")).toBeNull();
