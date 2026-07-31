@@ -75,6 +75,7 @@ describe("renderLatexToElements", () => {
           element.points.length > 2 &&
           element.points.length <= 7 &&
           element.roundness !== null &&
+          element.roughness === 0 &&
           element.startArrowhead === null &&
           element.endArrowhead === null,
       ),
@@ -98,6 +99,7 @@ describe("renderLatexToElements", () => {
         braceLines[0].points.length > 2 &&
         braceLines[0].points.length <= 7 &&
         braceLines[0].roundness !== null &&
+        braceLines[0].roughness === 0 &&
         braceLines[0].startArrowhead === null &&
         braceLines[0].endArrowhead === null,
     ).toBe(true);

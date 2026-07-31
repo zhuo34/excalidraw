@@ -115,7 +115,10 @@ const createLinearElement = (
     strokeColor: context.strokeColor,
     strokeWidth: primitive.strokeWidth,
     strokeStyle: context.strokeStyle,
-    roughness: context.roughness,
+    roughness:
+      primitive.kind === "path" || primitive.role === "matrix-delimiter"
+        ? 0
+        : context.roughness,
     opacity: context.opacity,
     groupIds: [context.groupId],
     customData: {
