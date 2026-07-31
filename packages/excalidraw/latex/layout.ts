@@ -28,7 +28,18 @@ export type LatexLinePrimitive = {
   strokeWidth: number;
 };
 
-export type LatexPrimitive = LatexTextPrimitive | LatexLinePrimitive;
+export type LatexPathPrimitive = {
+  kind: "path";
+  role: string;
+  points: readonly (readonly [number, number])[];
+  strokeWidth: number;
+  curved: boolean;
+};
+
+export type LatexPrimitive =
+  | LatexTextPrimitive
+  | LatexLinePrimitive
+  | LatexPathPrimitive;
 
 export type LatexLayoutBox = {
   width: number;
@@ -82,6 +93,12 @@ const translatePrimitive = (
   if (primitive.kind === "text") {
     return { ...primitive, x: primitive.x + dx, y: primitive.y + dy };
   }
+  if (primitive.kind === "path") {
+    return {
+      ...primitive,
+      points: primitive.points.map(([x, y]) => [x + dx, y + dy] as const),
+    };
+  }
   return {
     ...primitive,
     x1: primitive.x1 + dx,
@@ -97,20 +114,18 @@ const translatePrimitives = (
   dy: number,
 ) => primitives.map((primitive) => translatePrimitive(primitive, dx, dy));
 
-const polylineToPrimitives = (
+const pathPrimitive = (
   points: readonly (readonly [number, number])[],
   role: string,
   strokeWidth: number,
-): LatexLinePrimitive[] =>
-  points.slice(1).map((point, index) => ({
-    kind: "line",
-    role,
-    x1: points[index][0],
-    y1: points[index][1],
-    x2: point[0],
-    y2: point[1],
-    strokeWidth,
-  }));
+  curved: boolean,
+): LatexPathPrimitive => ({
+  kind: "path",
+  role,
+  points,
+  strokeWidth,
+  curved,
+});
 
 const mergeAdjacentTextPrimitives = (
   primitives: LatexPrimitive[],
@@ -406,17 +421,11 @@ const layoutUnderbrace = (
   const strokeWidth = Math.max(0.9, style.fontSize * 0.04);
   const bracePoints = [
     [0, 0],
-    [braceWidth * 0.04, braceDepth * 0.15],
-    [braceWidth * 0.08, braceDepth * 0.42],
-    [braceWidth * 0.14, braceDepth * 0.55],
+    [braceWidth * 0.08, braceDepth * 0.55],
     [braceWidth * 0.42, braceDepth * 0.55],
-    [braceWidth * 0.47, braceDepth * 0.7],
     [braceWidth * 0.5, braceDepth],
-    [braceWidth * 0.53, braceDepth * 0.7],
     [braceWidth * 0.58, braceDepth * 0.55],
-    [braceWidth * 0.86, braceDepth * 0.55],
-    [braceWidth * 0.92, braceDepth * 0.42],
-    [braceWidth * 0.96, braceDepth * 0.15],
+    [braceWidth * 0.92, braceDepth * 0.55],
     [braceWidth, 0],
   ] as const;
   const annotationPrimitives =
@@ -433,7 +442,7 @@ const layoutUnderbrace = (
     [
       ...translatePrimitives(body.primitives, bodyX, 0),
       ...translatePrimitives(
-        polylineToPrimitives(bracePoints, "underbrace", strokeWidth),
+        [pathPrimitive(bracePoints, "underbrace", strokeWidth, true)],
         braceX,
         braceY,
       ),
@@ -663,11 +672,9 @@ const layoutMatrixDelimiter = (
   if (delimiter === "(" || delimiter === ")") {
     points = [
       [width, 0],
-      [width * 0.45, height * 0.08],
-      [width * 0.1, height * 0.27],
+      [width * 0.2, height * 0.22],
       [0, height * 0.5],
-      [width * 0.1, height * 0.73],
-      [width * 0.45, height * 0.92],
+      [width * 0.2, height * 0.78],
       [width, height],
     ];
   } else if (delimiter === "[" || delimiter === "]") {
@@ -680,13 +687,11 @@ const layoutMatrixDelimiter = (
   } else {
     points = [
       [width, 0],
-      [width * 0.5, height * 0.06],
-      [width * 0.35, height * 0.2],
+      [width * 0.4, height * 0.12],
       [width * 0.35, height * 0.38],
       [0, height * 0.5],
       [width * 0.35, height * 0.62],
-      [width * 0.35, height * 0.8],
-      [width * 0.5, height * 0.94],
+      [width * 0.4, height * 0.88],
       [width, height],
     ];
   }
@@ -695,12 +700,14 @@ const layoutMatrixDelimiter = (
     points = points.map(([x, y]) => [width - x, y] as const);
   }
 
-  return createBox(
-    width,
-    height,
-    height / 2,
-    polylineToPrimitives(points, role, strokeWidth),
-  );
+  return createBox(width, height, height / 2, [
+    pathPrimitive(
+      points,
+      role,
+      strokeWidth,
+      delimiter !== "[" && delimiter !== "]",
+    ),
+  ]);
 };
 
 const layoutMatrixFencedBox = (
@@ -794,6 +801,13 @@ const normalizeBox = (box: LatexLayoutBox): LatexLayoutBox => {
       minY = Math.min(minY, primitive.y);
       maxX = Math.max(maxX, primitive.x + primitive.width);
       maxY = Math.max(maxY, primitive.y + primitive.height);
+    } else if (primitive.kind === "path") {
+      for (const [x, y] of primitive.points) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
     } else {
       minX = Math.min(minX, primitive.x1, primitive.x2);
       minY = Math.min(minY, primitive.y1, primitive.y2);

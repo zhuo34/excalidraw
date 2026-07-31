@@ -64,10 +64,21 @@ describe("renderLatexToElements", () => {
 
     expect(text).toContain("a");
     expect(text).toContain("d");
-    expect(delimiters.length).toBeGreaterThan(2);
+    expect(delimiters).toHaveLength(2);
     expect(
       Math.max(...delimiters.map((element) => element.strokeWidth)),
     ).toBeLessThanOrEqual(1);
+    expect(
+      delimiters.every(
+        (element) =>
+          element.type === "line" &&
+          element.points.length > 2 &&
+          element.points.length <= 7 &&
+          element.roundness !== null &&
+          element.startArrowhead === null &&
+          element.endArrowhead === null,
+      ),
+    ).toBe(true);
   });
 
   it("renders an underbrace with a centered annotation", () => {
@@ -81,13 +92,24 @@ describe("renderLatexToElements", () => {
       (element) => element.customData?.latexRole === "underbrace-label",
     );
 
-    expect(braceLines.length).toBeGreaterThan(6);
+    expect(braceLines).toHaveLength(1);
+    expect(
+      braceLines[0].type === "line" &&
+        braceLines[0].points.length > 2 &&
+        braceLines[0].points.length <= 7 &&
+        braceLines[0].roundness !== null &&
+        braceLines[0].startArrowhead === null &&
+        braceLines[0].endArrowhead === null,
+    ).toBe(true);
     expect(annotation?.type).toBe("text");
     expect(annotation?.type === "text" && annotation.text).toBe("说明文字");
-    const braceLeft = Math.min(...braceLines.map((element) => element.x));
-    const braceRight = Math.max(
-      ...braceLines.map((element) => element.x + element.width),
-    );
+    const brace = braceLines[0];
+    if (brace.type !== "line") {
+      throw new Error("Expected the underbrace to be a line element");
+    }
+    const braceXs = brace.points.map(([x]) => brace.x + x);
+    const braceLeft = Math.min(...braceXs);
+    const braceRight = Math.max(...braceXs);
     expect(
       annotation &&
         Math.abs(

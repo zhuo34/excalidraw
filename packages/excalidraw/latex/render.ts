@@ -1,5 +1,6 @@
 import {
   FONT_FAMILY,
+  ROUNDNESS,
   getFontString,
   getLineHeight,
   randomId,
@@ -72,8 +73,8 @@ const createTextElement = (
     },
   });
 
-const createLineElement = (
-  primitive: Extract<LatexPrimitive, { kind: "line" }>,
+const createLinearElement = (
+  primitive: Exclude<LatexPrimitive, { kind: "text" }>,
   context: {
     latex: string;
     formulaId: string;
@@ -86,10 +87,19 @@ const createLineElement = (
     strokeStyle: StrokeStyle;
   },
 ): ExcalidrawElement => {
-  const minX = Math.min(primitive.x1, primitive.x2);
-  const minY = Math.min(primitive.y1, primitive.y2);
-  const maxX = Math.max(primitive.x1, primitive.x2);
-  const maxY = Math.max(primitive.y1, primitive.y2);
+  const points =
+    primitive.kind === "line"
+      ? ([
+          [primitive.x1, primitive.y1],
+          [primitive.x2, primitive.y2],
+        ] as const)
+      : primitive.points;
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
 
   return newLinearElement({
     type: "line",
@@ -97,10 +107,11 @@ const createLineElement = (
     y: context.originY + minY,
     width: maxX - minX,
     height: maxY - minY,
-    points: [
-      pointFrom(primitive.x1 - minX, primitive.y1 - minY),
-      pointFrom(primitive.x2 - minX, primitive.y2 - minY),
-    ],
+    points: points.map(([x, y]) => pointFrom(x - minX, y - minY)),
+    roundness:
+      primitive.kind === "path" && primitive.curved
+        ? { type: ROUNDNESS.PROPORTIONAL_RADIUS }
+        : null,
     strokeColor: context.strokeColor,
     strokeWidth: primitive.strokeWidth,
     strokeStyle: context.strokeStyle,
@@ -165,7 +176,7 @@ export const renderLatexToElements = (
     elements: layout.primitives.map((primitive) =>
       primitive.kind === "text"
         ? createTextElement(primitive, context)
-        : createLineElement(primitive, context),
+        : createLinearElement(primitive, context),
     ),
     warnings,
     groupId,
