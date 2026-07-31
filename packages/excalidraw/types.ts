@@ -458,7 +458,11 @@ export interface AppState {
     | { name: "ttd"; tab: "text-to-diagram" | "mermaid" }
     | { name: "commandPalette" }
     | { name: "settings" }
-    | { name: "latex" }
+    | {
+        name: "latex";
+        source?: string;
+        elementId?: ExcalidrawElement["id"];
+      }
     | { name: "elementLinkSelector"; sourceElementId: ExcalidrawElement["id"] }
     | { name: "charts"; data: Spreadsheet; rawText: string };
   /**
@@ -1072,6 +1076,7 @@ export type AppClassProperties = {
   pasteFromClipboard: App["pasteFromClipboard"];
   id: App["id"];
   onInsertElements: App["onInsertElements"];
+  replaceLatexFormula: App["replaceLatexFormula"];
   onExportImage: App["onExportImage"];
   viewport: App["viewport"];
   addFiles: App["addFiles"];

@@ -2697,6 +2697,119 @@ class App extends React.Component<AppProps, AppState> {
     });
   };
 
+  public replaceLatexFormula = (
+    targetElementId: ExcalidrawElement["id"],
+    replacementElements: readonly ExcalidrawElement[],
+  ) => {
+    const targetElement = this.scene.getElement(targetElementId);
+    const formulaGroupId = targetElement?.groupIds[0];
+    const formulaId = targetElement?.customData?.latexFormulaId;
+
+    if (
+      !targetElement ||
+      !formulaGroupId ||
+      typeof formulaId !== "string" ||
+      targetElement.customData?.latexRenderer !== "excalidraw-text-v1" ||
+      replacementElements.length === 0
+    ) {
+      return false;
+    }
+
+    const sceneElements = this.scene.getElementsIncludingDeleted();
+    const formulaElements = this.scene
+      .getNonDeletedElements()
+      .filter(
+        (element) =>
+          element.groupIds[0] === formulaGroupId &&
+          element.customData?.latexFormulaId === formulaId &&
+          element.customData?.latexRenderer === "excalidraw-text-v1",
+      );
+
+    if (formulaElements.length === 0) {
+      return false;
+    }
+
+    const formulaElementIds = new Set(
+      formulaElements.map((element) => element.id),
+    );
+    const insertionIndex = sceneElements.findIndex((element) =>
+      formulaElementIds.has(element.id),
+    );
+
+    if (insertionIndex < 0) {
+      return false;
+    }
+
+    const [oldX1, oldY1, oldX2, oldY2] = getCommonBounds(formulaElements);
+    const [newX1, newY1, newX2, newY2] = getCommonBounds(replacementElements);
+    const oldCenter = {
+      x: (oldX1 + oldX2) / 2,
+      y: (oldY1 + oldY2) / 2,
+    };
+    const newCenter = {
+      x: (newX1 + newX2) / 2,
+      y: (newY1 + newY2) / 2,
+    };
+    const angle = formulaElements.every(
+      (element) => Math.abs(element.angle - targetElement.angle) < 0.0001,
+    )
+      ? targetElement.angle
+      : (0 as Radians);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    const positionedReplacements = replacementElements.map((element) => {
+      const elementCenter = {
+        x: element.x + element.width / 2,
+        y: element.y + element.height / 2,
+      };
+      const relativeX = elementCenter.x - newCenter.x;
+      const relativeY = elementCenter.y - newCenter.y;
+      const rotatedCenter = {
+        x: oldCenter.x + relativeX * cos - relativeY * sin,
+        y: oldCenter.y + relativeX * sin + relativeY * cos,
+      };
+
+      return newElementWith(element, {
+        x: rotatedCenter.x - element.width / 2,
+        y: rotatedCenter.y - element.height / 2,
+        angle,
+        groupIds: [...targetElement.groupIds],
+        frameId: targetElement.frameId,
+      });
+    });
+    const positionedReplacementIds = positionedReplacements.reduce(
+      (selectedElementIds, element) => {
+        selectedElementIds[element.id] = true;
+        return selectedElementIds;
+      },
+      {} as Record<ExcalidrawElement["id"], true>,
+    );
+    const nextElements: ExcalidrawElement[] = [];
+
+    sceneElements.forEach((element, index) => {
+      if (index === insertionIndex) {
+        nextElements.push(...positionedReplacements);
+      }
+      if (!formulaElementIds.has(element.id)) {
+        nextElements.push(element);
+      }
+    });
+
+    this.updateScene({
+      elements: nextElements,
+      appState: {
+        selectedElementIds: positionedReplacementIds,
+        selectedGroupIds: { [formulaGroupId]: true },
+        editingGroupId: null,
+        selectedLinearElement: null,
+      },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+
+    return true;
+  };
+
   public onExportImage = async (
     type: keyof typeof EXPORT_IMAGE_TYPES,
     elements: ExportedElements,
@@ -7024,6 +7137,25 @@ class App extends React.Component<AppProps, AppState> {
       event,
       this.state,
     );
+
+    const latexHitElement = this.getElementAtPosition(sceneX, sceneY);
+    const latexSource = latexHitElement?.customData?.latex;
+
+    if (
+      !this.state.viewModeEnabled &&
+      latexHitElement?.groupIds[0] &&
+      latexHitElement.customData?.latexRenderer === "excalidraw-text-v1" &&
+      typeof latexSource === "string"
+    ) {
+      this.setState({
+        openDialog: {
+          name: "latex",
+          source: latexSource,
+          elementId: latexHitElement.id,
+        },
+      });
+      return;
+    }
 
     if (selectedElements.length === 1 && isLinearElement(selectedElements[0])) {
       const selectedLinearElement: ExcalidrawLinearElement =

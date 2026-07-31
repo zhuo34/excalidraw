@@ -53,6 +53,9 @@ const createTextElement = (
     originY: number;
     strokeColor: string;
     opacity: number;
+    fontSize: number;
+    roughness: number;
+    strokeStyle: StrokeStyle;
   },
 ): ExcalidrawElement =>
   newTextElement({
@@ -70,6 +73,9 @@ const createTextElement = (
       latexFormulaId: context.formulaId,
       latexRenderer: "excalidraw-text-v1",
       latexRole: primitive.role,
+      latexFontSize: context.fontSize,
+      latexRoughness: context.roughness,
+      latexStrokeStyle: context.strokeStyle,
     },
   });
 
@@ -83,6 +89,7 @@ const createLinearElement = (
     originY: number;
     strokeColor: string;
     opacity: number;
+    fontSize: number;
     roughness: number;
     strokeStyle: StrokeStyle;
   },
@@ -126,6 +133,9 @@ const createLinearElement = (
       latexFormulaId: context.formulaId,
       latexRenderer: "excalidraw-text-v1",
       latexRole: primitive.role,
+      latexFontSize: context.fontSize,
+      latexRoughness: context.roughness,
+      latexStrokeStyle: context.strokeStyle,
     },
   });
 };
@@ -171,6 +181,7 @@ export const renderLatexToElements = (
     originY: options.y ?? 0,
     strokeColor: options.strokeColor ?? "#1b1b1f",
     opacity: options.opacity ?? 100,
+    fontSize: options.fontSize ?? 28,
     roughness: options.roughness ?? 1,
     strokeStyle: options.strokeStyle ?? ("solid" as const),
   };

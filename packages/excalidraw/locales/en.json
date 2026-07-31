@@ -340,12 +340,16 @@
   },
   "latex": {
     "title": "Insert LaTeX formula",
+    "editTitle": "Edit LaTeX formula",
     "inputLabel": "LaTeX",
     "placeholder": "\\frac{a+b}{c} = \\sqrt{x^2+y^2}",
     "description": "Enter the formula without surrounding $$ delimiters. Press Ctrl or Cmd + Enter to insert.",
+    "editDescription": "Edit the formula without surrounding $$ delimiters. Press Ctrl or Cmd + Enter to update.",
     "insert": "Insert formula",
+    "update": "Update formula",
     "emptyError": "Enter a LaTeX formula.",
-    "renderError": "The formula could not be rendered."
+    "renderError": "The formula could not be rendered.",
+    "editTargetMissing": "The original formula could not be found."
   },
   "element": {
     "rectangle": "Rectangle",

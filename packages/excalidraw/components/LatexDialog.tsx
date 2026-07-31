@@ -11,7 +11,10 @@ import "./LatexDialog.scss";
 
 export const LatexDialog = () => {
   const app = useApp();
-  const [formula, setFormula] = useState("");
+  const dialogState =
+    app.state.openDialog?.name === "latex" ? app.state.openDialog : null;
+  const isEditing = Boolean(dialogState?.elementId);
+  const [formula, setFormula] = useState(dialogState?.source ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const onClose = () => {
@@ -27,14 +30,60 @@ export const LatexDialog = () => {
     }
 
     try {
+      const targetElement = dialogState?.elementId
+        ? app.scene.getElement(dialogState.elementId)
+        : null;
+      const formulaGroupId = targetElement?.groupIds[0];
+      const formulaElements = formulaGroupId
+        ? app.scene
+            .getNonDeletedElements()
+            .filter(
+              (element) =>
+                element.groupIds[0] === formulaGroupId &&
+                element.customData?.latexFormulaId ===
+                  targetElement?.customData?.latexFormulaId,
+            )
+        : [];
+      const storedFontSize = targetElement?.customData?.latexFontSize;
+      const storedRoughness = targetElement?.customData?.latexRoughness;
+      const storedStrokeStyle = targetElement?.customData?.latexStrokeStyle;
+      const fallbackFontSize =
+        formulaElements.reduce(
+          (fontSize, element) =>
+            element.type === "text"
+              ? Math.max(fontSize, element.fontSize)
+              : fontSize,
+          0,
+        ) || app.state.currentItemFontSize;
       const { elements } = renderLatexToElements(source, {
-        fontSize: app.state.currentItemFontSize,
-        strokeColor: app.state.currentItemStrokeColor,
-        opacity: app.state.currentItemOpacity,
-        roughness: app.state.currentItemRoughness,
-        strokeStyle: app.state.currentItemStrokeStyle,
+        fontSize:
+          typeof storedFontSize === "number"
+            ? storedFontSize
+            : fallbackFontSize,
+        strokeColor:
+          targetElement?.strokeColor ?? app.state.currentItemStrokeColor,
+        opacity: targetElement?.opacity ?? app.state.currentItemOpacity,
+        roughness:
+          typeof storedRoughness === "number"
+            ? storedRoughness
+            : app.state.currentItemRoughness,
+        strokeStyle:
+          storedStrokeStyle === "solid" ||
+          storedStrokeStyle === "dashed" ||
+          storedStrokeStyle === "dotted"
+            ? storedStrokeStyle
+            : app.state.currentItemStrokeStyle,
       });
-      app.onInsertElements(elements);
+      if (
+        dialogState?.elementId &&
+        !app.replaceLatexFormula(dialogState.elementId, elements)
+      ) {
+        setError(t("latex.editTargetMissing"));
+        return;
+      }
+      if (!dialogState?.elementId) {
+        app.onInsertElements(elements);
+      }
       onClose();
     } catch (renderError) {
       setError(
@@ -49,7 +98,7 @@ export const LatexDialog = () => {
     <Dialog
       className="LatexDialog"
       size="small"
-      title={t("latex.title")}
+      title={t(isEditing ? "latex.editTitle" : "latex.title")}
       onCloseRequest={onClose}
     >
       <form
@@ -81,7 +130,7 @@ export const LatexDialog = () => {
           aria-describedby="latex-formula-help"
         />
         <p id="latex-formula-help" className="LatexDialog__help">
-          {t("latex.description")}
+          {t(isEditing ? "latex.editDescription" : "latex.description")}
         </p>
         {error && (
           <p className="LatexDialog__error" role="alert">
@@ -91,7 +140,7 @@ export const LatexDialog = () => {
         <div className="LatexDialog__actions">
           <DialogActionButton label={t("buttons.cancel")} onClick={onClose} />
           <DialogActionButton
-            label={t("latex.insert")}
+            label={t(isEditing ? "latex.update" : "latex.insert")}
             actionType="primary"
             type="submit"
           />
